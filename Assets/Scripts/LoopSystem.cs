@@ -13,8 +13,8 @@ namespace Game
     
     internal class LoopSystem<TUpdateGroup> : ILoopSystem
     {
-        private UpdatableSlot[] _updatables = new UpdatableSlot[1000];
-        private readonly List<int> _updatablesToRemove = new();
+        private UpdatableSlot[] _updatableSlots = new UpdatableSlot[1000];
+        private readonly List<int> _updatableSlotsToRemove = new();
         private int _count_BF;
 
         private int Count
@@ -49,58 +49,54 @@ namespace Game
             }
         }
 
-        private void OnUpdate()
-        {
-            for (int i = 0; i < _updatablesToRemove.Count; i++)
-            {
-                var updatableIndex = _updatablesToRemove[i];
-                RemoveInReal(updatableIndex);
-            }
-            _updatablesToRemove.Clear();
-            
-            for (int i = 0; i < Count; i++)
-            {
-                var updatableSlot = _updatables[i];
-                updatableSlot.Updatable();
-            }
-        }
-
         public IDisposable Start(Action updatable)
         {
-            if (Count == _updatables.Length)
+            if (Count == _updatableSlots.Length)
             {
-                Array.Resize(ref _updatables, (int) (Count * 1.5f));
+                Array.Resize(ref _updatableSlots, (int) (Count * 1.5f));
             }
 
             var updatableSlot = new UpdatableSlot(this, updatable, Count);
-            _updatables[Count] = updatableSlot;
+            _updatableSlots[Count] = updatableSlot;
 
             Count += 1;
 
             return updatableSlot.Registration;
         }
 
+        private void OnUpdate()
+        {
+            for (int i = 0; i < _updatableSlotsToRemove.Count; i++)
+            {
+                var slotIndex = _updatableSlotsToRemove[i];
+                RemoveInReal(slotIndex);
+            }
+            _updatableSlotsToRemove.Clear();
+            
+            for (int i = 0; i < Count; i++)
+            {
+                var updatableSlot = _updatableSlots[i];
+                updatableSlot.Updatable();
+            }
+        }
+
         private void RemoveInReal(int index)
         {
             var lastUpdatableIndex = Count - 1;
-            if (index == lastUpdatableIndex)
+            if (index < lastUpdatableIndex)
             {
-                _updatables[index] = default;
-            }
-            else
-            {
-                ref var lastUpdatable = ref _updatables[lastUpdatableIndex];
+                ref var lastUpdatable = ref _updatableSlots[lastUpdatableIndex];
                 lastUpdatable.Registration.Index = index;
-                _updatables[index] = lastUpdatable;
-                _updatables[lastUpdatableIndex] = default;
+                _updatableSlots[index] = lastUpdatable;
             }
-
+            
+            _updatableSlots[lastUpdatableIndex] = default;
             Count -= 1;
         }
 
         private void RemoveAt(int index)
         {
-            _updatablesToRemove.Add(index);
+            _updatableSlotsToRemove.Add(index);
         }
         
         private struct UpdatableSlot
@@ -128,13 +124,11 @@ namespace Game
             
             public void Dispose()
             {
-                if (Index < 0)
+                if (Index >= 0)
                 {
-                    return;
+                    _loopSystem.RemoveAt(Index);
+                    Index = -1;
                 }
-                
-                _loopSystem.RemoveAt(Index);
-                Index = -1;
             }
         }
     }
