@@ -15,7 +15,39 @@ namespace Game
     {
         private UpdatableSlot[] _updatables = new UpdatableSlot[1000];
         private readonly List<int> _updatablesToRemove = new();
-        private int _count;
+        private int _count_BF;
+
+        private int Count
+        {
+            get => _count_BF;
+            set
+            {
+                if (_count_BF == value)
+                {
+                    return;
+                }
+                
+                var prevValue = _count_BF;
+                _count_BF = value;
+
+                if (value < prevValue && value == 0) // decreased to zero
+                {
+                    PlayerLoopExtensions.ModifyCurrentPlayerLoop((ref PlayerLoopSystem rootSystem) =>
+                    {
+                        var groupSystem = rootSystem.GetSystem<TUpdateGroup>();
+                        groupSystem.RemoveSystem<LoopSystem<TUpdateGroup>>(false);
+                    });
+                }
+                else if (value > prevValue && prevValue == 0) // increasing from zero
+                {
+                    PlayerLoopExtensions.ModifyCurrentPlayerLoop((ref PlayerLoopSystem rootSystem) =>
+                    {
+                        ref var groupSystem = ref rootSystem.GetSystem<TUpdateGroup>();
+                        groupSystem.AddSystem<LoopSystem<TUpdateGroup>>(OnUpdate);
+                    });
+                }
+            }
+        }
 
         private void OnUpdate()
         {
@@ -26,7 +58,7 @@ namespace Game
             }
             _updatablesToRemove.Clear();
             
-            for (int i = 0; i < _count; i++)
+            for (int i = 0; i < Count; i++)
             {
                 var updatableSlot = _updatables[i];
                 updatableSlot.Updatable();
@@ -35,31 +67,22 @@ namespace Game
 
         public IDisposable Start(Action updatable)
         {
-            if (_count == _updatables.Length)
+            if (Count == _updatables.Length)
             {
-                Array.Resize(ref _updatables, (int) (_count * 1.5f));
+                Array.Resize(ref _updatables, (int) (Count * 1.5f));
             }
 
-            var updatableSlot = new UpdatableSlot(this, updatable, _count);
-            _updatables[_count] = updatableSlot;
+            var updatableSlot = new UpdatableSlot(this, updatable, Count);
+            _updatables[Count] = updatableSlot;
 
-            if (_count == 0)
-            {
-                PlayerLoopExtensions.ModifyCurrentPlayerLoop((ref PlayerLoopSystem rootSystem) =>
-                {
-                    ref var groupSystem = ref rootSystem.GetSystem<TUpdateGroup>();
-                    groupSystem.AddSystem<LoopSystem<TUpdateGroup>>(OnUpdate);
-                });
-            }
-            
-            _count += 1;
+            Count += 1;
 
             return updatableSlot.Registration;
         }
 
         private void RemoveInReal(int index)
         {
-            var lastUpdatableIndex = _count - 1;
+            var lastUpdatableIndex = Count - 1;
             if (index == lastUpdatableIndex)
             {
                 _updatables[index] = default;
@@ -72,16 +95,7 @@ namespace Game
                 _updatables[lastUpdatableIndex] = default;
             }
 
-            if (_count == 0)
-            {
-                PlayerLoopExtensions.ModifyCurrentPlayerLoop((ref PlayerLoopSystem rootSystem) =>
-                {
-                    var groupSystem = rootSystem.GetSystem<TUpdateGroup>();
-                    groupSystem.RemoveSystem<LoopSystem<TUpdateGroup>>(false);
-                });
-            }
-
-            _count -= 1;
+            Count -= 1;
         }
 
         private void RemoveAt(int index)
