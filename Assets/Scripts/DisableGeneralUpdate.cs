@@ -4,19 +4,19 @@ using UnityEngine.PlayerLoop;
 
 namespace Game
 {
-    public class DisablePhysicsFixedUpdate : MonoBehaviour
+    public class DisableGeneralUpdate : MonoBehaviour
     {
         private void Start()
         {
             PlayerLoopExtensions.ModifyCurrentPlayerLoop((ref PlayerLoopSystem system) =>
             {
-                system.RemoveSystem<FixedUpdate.PhysicsFixedUpdate>();
+                system.RemoveSystem<Update.ScriptRunBehaviourUpdate>();
             });
         }
 
-        private void FixedUpdate()
+        private void Update()
         {
-            Debug.unityLogger.Log(nameof(DisablePhysicsFixedUpdate), "Unity Fixed Update", this);
+            Debug.unityLogger.Log(nameof(DisableGeneralUpdate), "Unity Update", this);
         }
     }
 }
