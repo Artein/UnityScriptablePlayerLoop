@@ -14,7 +14,7 @@ namespace Game
             PlayerLoop.SetPlayerLoop(currentLoop);
         }
 
-        public static ref PlayerLoopSystem GetSystem<TSystem>(ref this PlayerLoopSystem system)
+        public static ref PlayerLoopSystem GetSystem<TSystem>(in this PlayerLoopSystem system)
         {
             var type = typeof(TSystem);
             for (int i = 0; i < system.subSystemList.Length; i++)
